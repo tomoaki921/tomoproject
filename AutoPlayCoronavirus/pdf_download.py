@@ -5,9 +5,10 @@ import datetime
 from tika import parser
 import re
 
+
 class DownloadCoronavirusData():
     def __init__(self):
-        # 定数の宣言
+        # 定数の宣言(インスタンス変数:インスタンスオブジェクト間で共有しない変数)
         self.SEPALATE = '/'
         self.FILE_PATH = './CoronavirusData'
         self.DRIVER_PATH = r"C:\\Users\\aokit\\PycharmProjects\\AutoPlayCoronavirus\\venv\\Lib\\site-packages\\chromedriver_binary\\chromedriver.exe"
@@ -19,18 +20,22 @@ class DownloadCoronavirusData():
             os.mkdir(self.FILE_PATH)
 
     def download_doronavirus_Data(self):
-        # Chromeを起動する --- (*1)
+        # Chromeを起動する
         driver = webdriver.Chrome(self.DRIVER_PATH)
 
         # リンク名の定義
-        link_name = u'国内事例における都道府県別の患者報告数'
+        link_name1 = u'国内事例における都道府県別の患者報告数'
         link_name2 = u'国内における都道府県別の'
-        
-        # 取得する日付の配列を作成
+
+        # 取得する日付の配列を作成(yyyy-MM-dd HH:mm:ss.SSSSSSSSS)
         dt_now = datetime.datetime.now()
-        # 半角対応用
+        # 半角対応用(令和２年5月1日版)
         date_list = []
-        # 全角対応用
+        # 全角(月)対応用1(令和２年５月1日版)
+        date_list_halfwidth1 = []
+        # 全角(日)対応用2(令和２年5月１日版)
+        date_list_halfwidth2 = []
+        # 全角対応用(令和２年５月１日版)
         date_list_fullwidth = []
         # yyyymmdd型テキスト名保存用
         filename_list = []
@@ -42,13 +47,28 @@ class DownloadCoronavirusData():
                              + '月'
                              + str(dt_now_day)
                              + '日版')
+            date_list_halfwidth1.insert(0, '令和２年'
+                             + str(dt_now.month).translate(str.maketrans({chr(0x0021 + i): chr(0xFF01 + i) for i in range(94)}))
+                             + '月'
+                             + str(dt_now_day)
+                             + '日版')
+            date_list_halfwidth2.insert(0, '令和２年'
+                             + str(dt_now.month)
+                             + '月'
+                             + str(dt_now_day).translate(str.maketrans({chr(0x0021 + i): chr(0xFF01 + i) for i in range(94)}))
+                             + '日版')
             date_list_fullwidth.insert(0, '令和２年'
                              + str(dt_now.month).translate(str.maketrans({chr(0x0021 + i): chr(0xFF01 + i) for i in range(94)}))
                              + '月'
                              + str(dt_now_day).translate(str.maketrans({chr(0x0021 + i): chr(0xFF01 + i) for i in range(94)}))
                              + '日版')
-            dt_now_yyyymmdd =  dt_now + datetime.timedelta(days = -i)
+            dt_now_yyyymmdd = dt_now + datetime.timedelta(days = -i)
             filename_list.insert(0, dt_now_yyyymmdd.strftime('%Y%m%d'))
+            print(date_list)
+            print(date_list_halfwidth1)
+            print(date_list_halfwidth2)
+            print(date_list_fullwidth)
+            print(filename_list)
             if str(i + 1) == str(dt_now.day):
                 break
             i += 1
@@ -64,32 +84,36 @@ class DownloadCoronavirusData():
             time.sleep(1)
 
             try:
-                # ある日付のコロナウイルス感染症の現状をダウンロード
+                # ある日付のコロナウイルス感染症の現状をダウンロード（半角対応用(令和２年5月1日版)）
                 driver.find_element_by_partial_link_text(data).click()
             except Exception:
-                """
-                未解決部分！！！
-                厚労省はごみ！！！！
-                リンクの名前が半角だったり全角だったりする。。。
-                """
 
                 # 2秒待機
                 time.sleep(2)
                 try:
-                    # 文字列を全角に変換して再検索
-                    driver.find_element_by_partial_link_text(date_list_fullwidth[i]
-                                                         ).click()
-                except:
-                    print(data + 'は見つかりませんでした。')
-                    i += 1
-                    continue
-                
-                    
+                    # 全角(月)対応用1(令和２年５月1日版)に変換して再検索
+                    driver.find_element_by_partial_link_text(date_list_halfwidth1[i]).click()
+                except Exception:
+
+                    try:
+                        # 全角(日)対応用2(令和２年5月１日版)に変換して再検索
+                        driver.find_element_by_partial_link_text(date_list_halfwidth2[i]).click()
+                    except Exception:
+
+                        try:
+                            # 全角対応用(令和２年５月１日版)に変換して再検索
+                            driver.find_element_by_partial_link_text(date_list_fullwidth[i]).click()
+
+                        except Exception:
+                            print(data + 'は見つかりませんでした。')
+                            continue
+
+
             # 2秒待機
             time.sleep(2)
             # pdfファイル先に遷移する
             try:
-                driver.find_element_by_partial_link_text(link_name).click()
+                driver.find_element_by_partial_link_text(link_name1).click()
 
             except Exception:
                 driver.find_element_by_partial_link_text(link_name2).click()
@@ -98,8 +122,8 @@ class DownloadCoronavirusData():
             time.sleep(5)
             # pdfのurlを取得する
             cur_url = driver.current_url
-            
-            
+
+
             # pdfをtxtに変換する
             file_data = parser.from_file(cur_url)
             text = file_data["content"]
@@ -184,12 +208,12 @@ class DownloadCoronavirusData():
             file.write(output)
             f.close()
             file.close()
-            
+
             os.remove(path)
 
             print(data + 'は見つかりました。')
             i += 1
-            
+
         # 2秒待機
         time.sleep(2)
         # driverを閉じる
